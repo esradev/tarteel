@@ -87,6 +87,7 @@ export default function App() {
   useEffect(() => {
     if (!selectedSurah) return;
     setLoadingAyahs(true);
+    setAyahs([]); // Clear ayahs immediately to avoid showing old content
     const ayahCacheKey = `ayahs-${selectedSurah.number}`;
     const cachedAyahs = localStorage.getItem(ayahCacheKey);
     if (cachedAyahs) {
@@ -454,7 +455,7 @@ export default function App() {
               </Card>
 
               {/* Content based on view mode */}
-              {loadingAyahs ? (
+              {loadingAyahs || ayahs.length === 0 ? (
                 <NiceLoading message="Loading Surah..." />
               ) : viewMode === "cards" ? (
                 <CardView />
