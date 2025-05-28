@@ -13,8 +13,21 @@
     "windows": [
       {
         "title": "tarteel",
-        "width": 800,
-        "height": 600
+        "fullscreen": false,
+        "resizable": true,
+        "decorations": true,
+        "width": 1280,
+        "height": 720,
+        "minWidth": 800,
+        "minHeight": 600,
+        "maxWidth": 1920,
+        "maxHeight": 1080,
+        "visible": true,
+        "alwaysOnTop": false,
+        "transparent": false,
+        "maximizable": true,
+        "minimizable": true,
+        "center": true
       }
     ],
     "security": {
