@@ -92,7 +92,7 @@ export function AppSidebar({
                     className={
                       `w-full border-0 shadow-none hover:bg-muted hover:text-foreground cursor-pointer` +
                       (selectedSurah?.number === surah.number
-                        ? " bg-blue-100 text-blue-900 hover:bg-blue-100 hover:text-blue-900"
+                        ? " cursor-default bg-blue-100 text-blue-900 hover:bg-blue-100 hover:text-blue-900 dark:bg-blue-900/80 dark:text-blue-100 dark:hover:bg-blue-900/80 dark:hover:text-blue-100"
                         : "")
                     }
                   >

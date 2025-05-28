@@ -502,7 +502,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-gradient-to-br from-[#f5f7fa] to-[#c3d8e8] dark:from-[#1e293b] dark:to-[#334155] text-foreground relative overflow-x-hidden">
       {/* Offline mode indicator */}
       {offline && (
         <div className="fixed top-0 left-0 right-0 z-50 bg-yellow-200 text-yellow-900 text-center py-1 text-xs">
@@ -517,17 +517,22 @@ export default function App() {
         />
         <SidebarInset>
           {/* Header */}
-          <div className="border-b bg-card p-4">
+          <div className="border-b bg-gradient-to-r from-[#e0e7ef] to-[#f5f7fa] dark:from-blue-900 dark:to-[#1e293b] p-4 shadow-md relative z-10">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <SidebarTrigger />
                 <div>
-                  <h2 className="text-xl font-quran font-bold flex items-center gap-2 align-middle">
-                    <span className="text-sm text-muted-foreground">
+                  <h2 className="text-2xl md:text-3xl font-quran font-extrabold flex items-center gap-2 align-middle text-blue-500 drop-shadow-sm tracking-wide">
+                    <span className="text-base md:text-lg text-blue-500 font-serif font-normal">
                       (#{selectedSurah.number})
                     </span>
-                    {selectedSurah.name}
+                    <span className="font-quranic border-b-4 border-blue-500 pb-1">
+                      {selectedSurah.name}
+                    </span>
                   </h2>
+                  <p className="text-xs md:text-sm text-blue-500 font-serif mt-1">
+                    {selectedSurah.englishName}
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -536,7 +541,7 @@ export default function App() {
                   placeholder="Search ayahs..."
                   value={ayahSearch}
                   onChange={(e) => setAyahSearch(e.target.value)}
-                  className="w-40 md:w-56"
+                  className="w-40 md:w-56 bg-white/80 border-blue-500 focus:border-[#1e293b] rounded shadow"
                 />
                 <Button
                   variant={viewMode === "cards" ? "default" : "outline"}
@@ -603,17 +608,22 @@ export default function App() {
           <ScrollArea className="flex-1">
             <div className="max-w-4xl mx-auto p-6 space-y-8">
               {/* Surah Header */}
-              <Card>
+              <Card className="bg-white/90 dark:bg-blue-900/80 shadow-lg border-2 border-blue-500">
                 <CardHeader className="text-center">
-                  <CardTitle className="text-2xl">
+                  <CardTitle className="text-2xl md:text-3xl font-quranic text-blue-500 tracking-wide">
                     {selectedSurah.englishName} ({selectedSurah.number})
                   </CardTitle>
-                  <p className="text-3xl font-arabic">{selectedSurah.name}</p>
-                  <p className="text-muted-foreground">
+                  <p className="text-4xl font-quranic text-blue-500 drop-shadow-sm mb-2 mt-2">
+                    {selectedSurah.name}
+                  </p>
+                  <p className="text-base text-blue-500 font-serif mb-2">
                     {selectedSurah.englishNameTranslation}
                   </p>
                   <div className="flex justify-center gap-4 text-sm">
-                    <Badge variant="outline">
+                    <Badge
+                      variant="outline"
+                      className="border-blue-500 text-blue-500 bg-white/80"
+                    >
                       {selectedSurah.numberOfAyahs} Ayahs
                     </Badge>
                     <Badge
@@ -622,6 +632,7 @@ export default function App() {
                           ? "default"
                           : "secondary"
                       }
+                      className="border-blue-500 text-blue-500 bg-white/80"
                     >
                       {selectedSurah.revelationType}
                     </Badge>
@@ -644,7 +655,7 @@ export default function App() {
               <div className="flex justify-between items-center py-8">
                 <Button
                   variant="outline"
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-2 border-blue-500 text-blue-500 bg-white/80"
                   disabled={selectedSurah.number === 1}
                   onClick={() => {
                     const prevSurah = surahs.find(
@@ -658,7 +669,7 @@ export default function App() {
                 </Button>
                 <Button
                   variant="outline"
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-2 border-blue-500 text-blue-500 bg-white/80"
                   disabled={selectedSurah.number === surahs.length}
                   onClick={() => {
                     const nextSurah = surahs.find(
