@@ -21,6 +21,7 @@ import {
   Plus,
 } from "lucide-react";
 import { AppSidebar } from "./components/app-sidebar";
+import { Input } from "@/components/ui/input";
 
 export default function App() {
   const [surahs, setSurahs] = useState<any[]>([]);
@@ -34,6 +35,7 @@ export default function App() {
   const [loadingAyahs, setLoadingAyahs] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [offline, setOffline] = useState(false);
+  const [ayahSearch, setAyahSearch] = useState(""); // <-- new state
 
   // Fetch surah list on mount
   useEffect(() => {
@@ -171,9 +173,109 @@ export default function App() {
     return bookmarks.includes(`${surahId}-${ayahId}`);
   };
 
+  // Utility to normalize Arabic text for search (improved for Persian Yeh and Alef Maksura)
+  function normalizeArabic(text: string) {
+    return text
+      .replace(/[\u064B-\u065F\u0670\u06D6-\u06ED]/g, "") // Remove Arabic diacritics and Quranic marks
+      .replace(/[إأآا]/g, "ا") // Normalize alef variants to bare alef
+      .replace(/ى/g, "ي") // Normalize alef maqsura to ya
+      .replace(/ة/g, "ه") // Normalize ta marbuta to ha
+      .replace(/ؤ/g, "و") // Normalize waw-hamza to waw
+      .replace(/ئ/g, "ي") // Normalize ya-hamza to ya
+      .replace(/\u0649/g, "ي") // Arabic Alef Maksura to Ya
+      .replace(/\u06CC/g, "ي") // Persian Yeh to Arabic Ya
+      .replace(/\u064A/g, "ي") // Arabic Yeh to Arabic Ya (for consistency)
+      .replace(/-/g, "") // Remove dashes
+      .replace(/\s/g, "") // Remove spaces
+      .toLowerCase();
+  }
+
+  // Filter ayahs by search
+  const normalizedAyahSearch = normalizeArabic(ayahSearch);
+  const filteredAyahs =
+    ayahSearch.trim() === ""
+      ? ayahs
+      : ayahs.filter(
+          (ayah) =>
+            normalizeArabic(ayah.text).includes(normalizedAyahSearch) ||
+            normalizeArabic(ayah.translation).includes(normalizedAyahSearch) ||
+            ayah.translation.toLowerCase().includes(ayahSearch.toLowerCase())
+        );
+
+  // Utility to highlight matched text in Arabic or translation
+  function highlightMatch(text: string, query: string, isArabic = false) {
+    if (!query.trim()) return text;
+    // Normalize both text and query for matching
+    const norm = (s: string) =>
+      s
+        .replace(/[\u064B-\u065F\u0670\u06D6-\u06ED]/g, "")
+        .replace(/[إأآا]/g, "ا")
+        .replace(/ى/g, "ي")
+        .replace(/ة/g, "ه")
+        .replace(/ؤ/g, "و")
+        .replace(/ئ/g, "ي")
+        .replace(/\u0649/g, "ي")
+        .replace(/\u06CC/g, "ي")
+        .replace(/\u064A/g, "ي")
+        .replace(/-/g, "")
+        .replace(/\s/g, "")
+        .toLowerCase();
+
+    // Map each character in raw text to its normalized index
+    const raw = text;
+    const normText = norm(text);
+    const normQuery = norm(query);
+
+    // Build a mapping from normalized index to raw index
+    let normIdx = 0;
+    const normToRaw: number[] = [];
+    for (let i = 0; i < raw.length; ++i) {
+      const c = norm(raw[i]);
+      if (c.length > 0) {
+        for (let j = 0; j < c.length; ++j) {
+          normToRaw[normIdx++] = i;
+        }
+      }
+    }
+
+    let result: (string | JSX.Element)[] = [];
+    let i = 0;
+    let lastRawEnd = 0;
+    while (i <= normText.length - normQuery.length) {
+      if (normText.substr(i, normQuery.length) === normQuery) {
+        // Map normalized indices to raw indices
+        const rawStart = normToRaw[i];
+        const rawEnd =
+          i + normQuery.length < normToRaw.length
+            ? normToRaw[i + normQuery.length]
+            : raw.length;
+        if (lastRawEnd < rawStart) result.push(raw.slice(lastRawEnd, rawStart));
+        result.push(
+          <span
+            key={rawStart}
+            style={{
+              background: "#dbeafe",
+              color: isArabic ? "#2563eb" : undefined,
+              borderRadius: 4,
+              padding: "0 2px",
+            }}
+          >
+            {raw.slice(rawStart, rawEnd)}
+          </span>
+        );
+        lastRawEnd = rawEnd;
+        i += normQuery.length;
+      } else {
+        i++;
+      }
+    }
+    if (lastRawEnd < raw.length) result.push(raw.slice(lastRawEnd));
+    return result.length > 1 ? result : raw;
+  }
+
   const CardView = () => (
     <div className="space-y-6">
-      {ayahs.map((ayah) => (
+      {filteredAyahs.map((ayah) => (
         <Card key={ayah.id} className="group">
           <CardContent className="p-6">
             <div className="space-y-4">
@@ -201,12 +303,12 @@ export default function App() {
                   className="font-arabic leading-loose mb-4"
                   style={{ fontSize: `${fontSize[0]}px` }}
                 >
-                  {ayah.text}
+                  {highlightMatch(ayah.text, ayahSearch, true)}
                 </p>
               </div>
               <Separator />
               <p className="text-muted-foreground leading-relaxed">
-                {ayah.translation}
+                {highlightMatch(ayah.translation, ayahSearch)}
               </p>
             </div>
           </CardContent>
@@ -225,10 +327,10 @@ export default function App() {
               className="font-arabic leading-loose"
               style={{ fontSize: `${fontSize[0]}px` }}
             >
-              {ayahs.map((ayah, index) => (
+              {filteredAyahs.map((ayah, index) => (
                 <span key={ayah.id} className="group relative">
                   <span className="hover:bg-accent/20 transition-colors cursor-pointer">
-                    {ayah.text}
+                    {highlightMatch(ayah.text, ayahSearch, true)}
                   </span>
                   <span className="inline-flex items-center justify-center w-6 h-6 text-xs bg-primary text-primary-foreground rounded-full mx-2 font-sans">
                     {ayah.id}
@@ -263,13 +365,13 @@ export default function App() {
           <CardTitle className="text-lg">Translation</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {ayahs.map((ayah) => (
+          {filteredAyahs.map((ayah) => (
             <div key={ayah.id} className="flex gap-3">
               <Badge variant="outline" className="text-xs mt-1 flex-shrink-0">
                 {ayah.id}
               </Badge>
               <p className="text-muted-foreground leading-relaxed">
-                {ayah.translation}
+                {highlightMatch(ayah.translation, ayahSearch)}
               </p>
             </div>
           ))}
@@ -358,6 +460,13 @@ export default function App() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                {/* Ayah search input */}
+                <Input
+                  placeholder="Search ayahs..."
+                  value={ayahSearch}
+                  onChange={(e) => setAyahSearch(e.target.value)}
+                  className="w-40 md:w-56"
+                />
                 <Button
                   variant={viewMode === "cards" ? "default" : "ghost"}
                   size="icon"
