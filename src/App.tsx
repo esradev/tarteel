@@ -39,24 +39,88 @@ export default function App() {
   const [viewMode, setViewMode] = useState<"cards" | "continuous">("cards");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [offline, setOffline] = useState(false);
 
   // Fetch surah list on mount
   useEffect(() => {
     setLoading(true);
+    const cachedSurahs = localStorage.getItem("surahs");
+    if (cachedSurahs) {
+      try {
+        const parsed = JSON.parse(cachedSurahs);
+        setSurahs(parsed);
+        setSelectedSurah(parsed[0]);
+        setOffline(true);
+        setLoading(false);
+        // Try to update in background
+        fetch("https://api.alquran.cloud/v1/surah")
+          .then((res) => res.json())
+          .then((data) => {
+            setSurahs(data.data);
+            setSelectedSurah(data.data[0]);
+            localStorage.setItem("surahs", JSON.stringify(data.data));
+            setOffline(false);
+          })
+          .catch(() => {});
+        return;
+      } catch {}
+    }
     fetch("https://api.alquran.cloud/v1/surah")
       .then((res) => res.json())
       .then((data) => {
         setSurahs(data.data);
-        // Select Al-Fatihah by default
         setSelectedSurah(data.data[0]);
+        localStorage.setItem("surahs", JSON.stringify(data.data));
+        setOffline(false);
       })
-      .catch(() => setError("Failed to load surah list"))
+      .catch(() => {
+        setError("Failed to load surah list");
+        setOffline(true);
+      })
       .finally(() => setLoading(false));
   }, []);
 
   // Fetch ayahs when selectedSurah changes
   useEffect(() => {
     if (!selectedSurah) return;
+    setLoading(true);
+    const ayahCacheKey = `ayahs-${selectedSurah.number}`;
+    const cachedAyahs = localStorage.getItem(ayahCacheKey);
+    if (cachedAyahs) {
+      try {
+        setAyahs(JSON.parse(cachedAyahs));
+        setOffline(true);
+        setLoading(false);
+        // Try to update in background
+        fetch(
+          `https://api.alquran.cloud/v1/surah/${selectedSurah.number}/ar.alafasy`
+        )
+          .then((res) => res.json())
+          .then((data) => {
+            fetch(
+              `https://api.alquran.cloud/v1/surah/${selectedSurah.number}/en.asad`
+            )
+              .then((res2) => res2.json())
+              .then((tr) => {
+                const ayahsWithTranslation = data.data.ayahs.map(
+                  (a: any, i: number) => ({
+                    id: a.numberInSurah,
+                    text: a.text,
+                    translation: tr.data.ayahs[i]?.text || "",
+                  })
+                );
+                setAyahs(ayahsWithTranslation);
+                localStorage.setItem(
+                  ayahCacheKey,
+                  JSON.stringify(ayahsWithTranslation)
+                );
+                setOffline(false);
+              });
+          })
+          .catch(() => {});
+        return;
+      } catch {}
+    }
     setLoading(true);
     fetch(
       `https://api.alquran.cloud/v1/surah/${selectedSurah.number}/ar.alafasy`
@@ -78,9 +142,17 @@ export default function App() {
               })
             );
             setAyahs(ayahsWithTranslation);
+            localStorage.setItem(
+              ayahCacheKey,
+              JSON.stringify(ayahsWithTranslation)
+            );
+            setOffline(false);
           });
       })
-      .catch(() => setError("Failed to load surah"))
+      .catch(() => {
+        setError("Failed to load surah");
+        setOffline(true);
+      })
       .finally(() => setLoading(false));
   }, [selectedSurah]);
 
@@ -279,10 +351,12 @@ export default function App() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
-        Loading...
+        <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-blue-500"></div>
+        <p className="text-lg text-muted-foreground ml-4">Loading...</p>
       </div>
     );
   }
+
   if (error) {
     return (
       <div className="flex items-center justify-center h-screen text-red-500">
@@ -296,6 +370,12 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
+      {/* Offline mode indicator */}
+      {offline && (
+        <div className="fixed top-0 left-0 right-0 z-50 bg-yellow-200 text-yellow-900 text-center py-1 text-xs">
+          Offline mode: showing cached Quran data
+        </div>
+      )}
       <SidebarProvider>
         <AppSidebar
           surahs={surahs}
@@ -309,15 +389,12 @@ export default function App() {
               <div className="flex items-center gap-4">
                 <SidebarTrigger />
                 <div>
-                  <h2 className="text-xl font-bold">
-                    {selectedSurah.englishName}
-                  </h2>
-                  <p className="text-2xl font-arabic text-right">
+                  <h2 className="text-xl font-quran font-bold flex items-center gap-2 align-middle">
+                    <span className="text-sm text-muted-foreground">
+                      (#{selectedSurah.number})
+                    </span>
                     {selectedSurah.name}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {selectedSurah.englishNameTranslation}
-                  </p>
+                  </h2>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -358,7 +435,7 @@ export default function App() {
               <Card>
                 <CardHeader className="text-center">
                   <CardTitle className="text-2xl">
-                    {selectedSurah.englishName}
+                    {selectedSurah.englishName} ({selectedSurah.number})
                   </CardTitle>
                   <p className="text-3xl font-arabic">{selectedSurah.name}</p>
                   <p className="text-muted-foreground">

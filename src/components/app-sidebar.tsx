@@ -65,7 +65,7 @@ export function AppSidebar({
       </SidebarHeader>
       <SidebarContent>
         <ScrollArea className="flex-1">
-          <SidebarMenu>
+          <SidebarMenu className="space-y-2 px-2">
             {filteredSurahs.map((surah) => (
               <SidebarMenuItem key={surah.number}>
                 <SidebarMenuButton
@@ -73,7 +73,14 @@ export function AppSidebar({
                   isActive={selectedSurah?.number === surah.number}
                   className="h-auto p-0"
                 >
-                  <Card className="w-full border-0 shadow-none">
+                  <Card
+                    className={
+                      `w-full border-0 shadow-none hover:bg-muted hover:text-foreground cursor-pointer` +
+                      (selectedSurah?.number === surah.number
+                        ? " bg-blue-100 text-blue-900 hover:bg-blue-100 hover:text-blue-900"
+                        : "")
+                    }
+                  >
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between">
                         <div className="space-y-1">
