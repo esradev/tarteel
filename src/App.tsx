@@ -4,156 +4,32 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  SidebarProvider,
-  SidebarInset,
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
-import {
-  Bookmark,
-  ChevronLeft,
-  ChevronRight,
-  Moon,
-  Sun,
-  LayoutGrid,
-  AlignJustify,
-  AlignRight,
-  AArrowDown,
-  AArrowUp,
-} from "lucide-react";
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { Bookmark, ChevronLeft, ChevronRight } from "lucide-react";
 import { AppSidebar } from "./components/app-sidebar";
-import { Input } from "@/components/ui/input";
+import { useQuranData } from "./use-quran-data";
+import { AppHeader } from "./components/app-header";
 
 export default function App() {
-  const [surahs, setSurahs] = useState<any[]>([]);
-  const [selectedSurah, setSelectedSurah] = useState<any | null>(null);
-  const [ayahs, setAyahs] = useState<any[]>([]);
+  // Quran data state from hook
+  const {
+    surahs,
+    selectedSurah,
+    setSelectedSurah,
+    ayahs,
+    loadingSurahs,
+    loadingAyahs,
+    error,
+    offline,
+  } = useQuranData();
+
   const [bookmarks, setBookmarks] = useState<string[]>([]);
   const [fontSize, setFontSize] = useState([18]);
   const [darkMode, setDarkMode] = useState(false);
   const [viewMode, setViewMode] = useState<"cards" | "continuous" | "lines">(
     "lines"
   );
-  const [loadingSurahs, setLoadingSurahs] = useState(false);
-  const [loadingAyahs, setLoadingAyahs] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [offline, setOffline] = useState(false);
   const [ayahSearch, setAyahSearch] = useState(""); // <-- new state
-
-  // Fetch surah list on mount
-  useEffect(() => {
-    setLoadingSurahs(true);
-    const cachedSurahs = localStorage.getItem("surahs");
-    if (cachedSurahs) {
-      try {
-        const parsed = JSON.parse(cachedSurahs);
-        setSurahs(parsed);
-        setSelectedSurah(parsed[0]);
-        setOffline(true);
-        setLoadingSurahs(false);
-        // Try to update in background
-        fetch("https://api.alquran.cloud/v1/surah")
-          .then((res) => res.json())
-          .then((data) => {
-            setSurahs(data.data);
-            setSelectedSurah(data.data[0]);
-            localStorage.setItem("surahs", JSON.stringify(data.data));
-            setOffline(false);
-          })
-          .catch(() => {});
-        return;
-      } catch {}
-    }
-    fetch("https://api.alquran.cloud/v1/surah")
-      .then((res) => res.json())
-      .then((data) => {
-        setSurahs(data.data);
-        setSelectedSurah(data.data[0]);
-        localStorage.setItem("surahs", JSON.stringify(data.data));
-        setOffline(false);
-      })
-      .catch(() => {
-        setError("Failed to load surah list");
-        setOffline(true);
-      })
-      .finally(() => setLoadingSurahs(false));
-  }, []);
-
-  // Fetch ayahs when selectedSurah changes
-  useEffect(() => {
-    if (!selectedSurah) return;
-    setLoadingAyahs(true);
-    setAyahs([]); // Clear ayahs immediately to avoid showing old content
-    const ayahCacheKey = `ayahs-${selectedSurah.number}`;
-    const cachedAyahs = localStorage.getItem(ayahCacheKey);
-    if (cachedAyahs) {
-      try {
-        setAyahs(JSON.parse(cachedAyahs));
-        setOffline(true);
-        setLoadingAyahs(false);
-        // Try to update in background
-        fetch(
-          `https://api.alquran.cloud/v1/surah/${selectedSurah.number}/ar.alafasy`
-        )
-          .then((res) => res.json())
-          .then((data) => {
-            fetch(
-              `https://api.alquran.cloud/v1/surah/${selectedSurah.number}/en.asad`
-            )
-              .then((res2) => res2.json())
-              .then((tr) => {
-                const ayahsWithTranslation = data.data.ayahs.map(
-                  (a: any, i: number) => ({
-                    id: a.numberInSurah,
-                    text: a.text,
-                    translation: tr.data.ayahs[i]?.text || "",
-                  })
-                );
-                setAyahs(ayahsWithTranslation);
-                localStorage.setItem(
-                  ayahCacheKey,
-                  JSON.stringify(ayahsWithTranslation)
-                );
-                setOffline(false);
-              });
-          })
-          .catch(() => {});
-        return;
-      } catch {}
-    }
-    fetch(
-      `https://api.alquran.cloud/v1/surah/${selectedSurah.number}/ar.alafasy`
-    )
-      .then((res) => res.json())
-      .then((data) => {
-        // Fetch translation as well
-        fetch(
-          `https://api.alquran.cloud/v1/surah/${selectedSurah.number}/en.asad`
-        )
-          .then((res2) => res2.json())
-          .then((tr) => {
-            // Merge Arabic and translation
-            const ayahsWithTranslation = data.data.ayahs.map(
-              (a: any, i: number) => ({
-                id: a.numberInSurah,
-                text: a.text,
-                translation: tr.data.ayahs[i]?.text || "",
-              })
-            );
-            setAyahs(ayahsWithTranslation);
-            localStorage.setItem(
-              ayahCacheKey,
-              JSON.stringify(ayahsWithTranslation)
-            );
-            setOffline(false);
-          });
-      })
-      .catch(() => {
-        setError("Failed to load surah");
-        setOffline(true);
-      })
-      .finally(() => setLoadingAyahs(false));
-  }, [selectedSurah]);
 
   useEffect(() => {
     if (darkMode) {
@@ -290,10 +166,14 @@ export default function App() {
                   variant="ghost"
                   size="icon"
                   className="opacity-0 group-hover:opacity-100 transition-opacity"
-                  onClick={() => toggleBookmark(selectedSurah.number, ayah.id)}
+                  onClick={() => {
+                    if (selectedSurah)
+                      toggleBookmark(selectedSurah.number, ayah.id);
+                  }}
                 >
                   <Bookmark
                     className={`h-4 w-4 ${
+                      selectedSurah &&
                       isBookmarked(selectedSurah.number, ayah.id)
                         ? "fill-current text-yellow-500"
                         : ""
@@ -347,12 +227,14 @@ export default function App() {
                       variant="ghost"
                       size="icon"
                       className="absolute -top-1 -right-1 w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={() =>
-                        toggleBookmark(selectedSurah.number, ayah.id)
-                      }
+                      onClick={() => {
+                        if (selectedSurah)
+                          toggleBookmark(selectedSurah.number, ayah.id);
+                      }}
                     >
                       <Bookmark
                         className={`h-3 w-3 ${
+                          selectedSurah &&
                           isBookmarked(selectedSurah.number, ayah.id)
                             ? "fill-current text-yellow-500"
                             : ""
@@ -410,12 +292,14 @@ export default function App() {
                     variant="ghost"
                     size="icon"
                     className="absolute -top-1 -right-1 w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={() =>
-                      toggleBookmark(selectedSurah.number, ayah.id)
-                    }
+                    onClick={() => {
+                      if (selectedSurah)
+                        toggleBookmark(selectedSurah.number, ayah.id);
+                    }}
                   >
                     <Bookmark
                       className={`h-3 w-3 ${
+                        selectedSurah &&
                         isBookmarked(selectedSurah.number, ayah.id)
                           ? "fill-current text-yellow-500"
                           : ""
@@ -517,93 +401,17 @@ export default function App() {
         />
         <SidebarInset>
           {/* Header */}
-          <div className="border-b bg-gradient-to-r from-[#e0e7ef] to-[#f5f7fa] dark:from-blue-900 dark:to-[#1e293b] p-4 shadow-md relative z-10">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <SidebarTrigger />
-                <div>
-                  <h2 className="text-2xl md:text-3xl font-quran font-extrabold flex items-center gap-2 align-middle text-blue-500 drop-shadow-sm tracking-wide">
-                    <span className="text-base md:text-lg text-blue-500 font-serif font-normal">
-                      (#{selectedSurah.number})
-                    </span>
-                    <span className="font-quranic border-b-4 border-blue-500 pb-1">
-                      {selectedSurah.name}
-                    </span>
-                  </h2>
-                  <p className="text-xs md:text-sm text-blue-500 font-serif mt-1">
-                    {selectedSurah.englishName}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                {/* Ayah search input */}
-                <Input
-                  placeholder="Search ayahs..."
-                  value={ayahSearch}
-                  onChange={(e) => setAyahSearch(e.target.value)}
-                  className="w-40 md:w-56 bg-white/80 border-blue-500 focus:border-[#1e293b] rounded shadow"
-                />
-                <Button
-                  variant={viewMode === "cards" ? "default" : "outline"}
-                  size="icon"
-                  onClick={() => setViewMode("cards")}
-                >
-                  <LayoutGrid className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant={viewMode === "continuous" ? "default" : "outline"}
-                  size="icon"
-                  onClick={() => setViewMode("continuous")}
-                >
-                  <AlignRight className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant={viewMode === "lines" ? "default" : "outline"}
-                  size="icon"
-                  onClick={() => setViewMode("lines")}
-                >
-                  <AlignJustify className="h-4 w-4" />
-                </Button>
-                {/* Font size controls */}
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    aria-label="Decrease font size"
-                    onClick={() =>
-                      setFontSize((prev) => [Math.max(12, prev[0] - 2)])
-                    }
-                    disabled={fontSize[0] <= 12}
-                  >
-                    <AArrowDown className="text-lg font-bold" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    aria-label="Increase font size"
-                    onClick={() =>
-                      setFontSize((prev) => [Math.min(32, prev[0] + 2)])
-                    }
-                    disabled={fontSize[0] >= 32}
-                  >
-                    <AArrowUp className="text-lg font-bold" />
-                  </Button>
-                </div>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setDarkMode(!darkMode)}
-                >
-                  {darkMode ? (
-                    <Sun className="h-4 w-4" />
-                  ) : (
-                    <Moon className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
-            </div>
-          </div>
-
+          <AppHeader
+            selectedSurah={selectedSurah}
+            ayahSearch={ayahSearch}
+            setAyahSearch={setAyahSearch}
+            viewMode={viewMode}
+            setViewMode={setViewMode}
+            fontSize={fontSize}
+            setFontSize={setFontSize}
+            darkMode={darkMode}
+            setDarkMode={setDarkMode}
+          />
           {/* Reading Area */}
           <ScrollArea className="flex-1">
             <div className="max-w-4xl mx-auto p-6 space-y-8">
