@@ -37,13 +37,14 @@ export default function App() {
   const [fontSize, setFontSize] = useState([18]);
   const [darkMode, setDarkMode] = useState(false);
   const [viewMode, setViewMode] = useState<"cards" | "continuous">("cards");
-  const [loading, setLoading] = useState(false);
+  const [loadingSurahs, setLoadingSurahs] = useState(false);
+  const [loadingAyahs, setLoadingAyahs] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [offline, setOffline] = useState(false);
 
   // Fetch surah list on mount
   useEffect(() => {
-    setLoading(true);
+    setLoadingSurahs(true);
     const cachedSurahs = localStorage.getItem("surahs");
     if (cachedSurahs) {
       try {
@@ -51,7 +52,7 @@ export default function App() {
         setSurahs(parsed);
         setSelectedSurah(parsed[0]);
         setOffline(true);
-        setLoading(false);
+        setLoadingSurahs(false);
         // Try to update in background
         fetch("https://api.alquran.cloud/v1/surah")
           .then((res) => res.json())
@@ -77,20 +78,20 @@ export default function App() {
         setError("Failed to load surah list");
         setOffline(true);
       })
-      .finally(() => setLoading(false));
+      .finally(() => setLoadingSurahs(false));
   }, []);
 
   // Fetch ayahs when selectedSurah changes
   useEffect(() => {
     if (!selectedSurah) return;
-    setLoading(true);
+    setLoadingAyahs(true);
     const ayahCacheKey = `ayahs-${selectedSurah.number}`;
     const cachedAyahs = localStorage.getItem(ayahCacheKey);
     if (cachedAyahs) {
       try {
         setAyahs(JSON.parse(cachedAyahs));
         setOffline(true);
-        setLoading(false);
+        setLoadingAyahs(false);
         // Try to update in background
         fetch(
           `https://api.alquran.cloud/v1/surah/${selectedSurah.number}/ar.alafasy`
@@ -121,7 +122,6 @@ export default function App() {
         return;
       } catch {}
     }
-    setLoading(true);
     fetch(
       `https://api.alquran.cloud/v1/surah/${selectedSurah.number}/ar.alafasy`
     )
@@ -153,7 +153,7 @@ export default function App() {
         setError("Failed to load surah");
         setOffline(true);
       })
-      .finally(() => setLoading(false));
+      .finally(() => setLoadingAyahs(false));
   }, [selectedSurah]);
 
   useEffect(() => {
@@ -348,13 +348,43 @@ export default function App() {
     </div>
   );
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-blue-500"></div>
-        <p className="text-lg text-muted-foreground ml-4">Loading...</p>
+  // Nice loading spinner component
+  const NiceLoading = ({
+    message = "Loading...",
+    fullscreen = false,
+  }: {
+    message?: string;
+    fullscreen?: boolean;
+  }) => (
+    <div
+      className={`flex flex-col items-center justify-center ${
+        fullscreen ? "h-screen" : "py-16"
+      }`}
+    >
+      <div className="relative mb-4">
+        <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-400 border-opacity-30"></div>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <svg
+            className="h-8 w-8 text-blue-500 animate-pulse"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 4v1m0 14v1m8-8h1M4 12H3m15.364-7.364l-.707.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M6.343 6.343l-.707-.707"
+            />
+          </svg>
+        </div>
       </div>
-    );
+      <p className="text-lg text-muted-foreground">{message}</p>
+    </div>
+  );
+
+  if (loadingSurahs) {
+    return <NiceLoading message="Loading Surah List..." fullscreen />;
   }
 
   if (error) {
@@ -458,23 +488,14 @@ export default function App() {
                 </CardHeader>
               </Card>
 
-              {/* Bismillah for non-Tawbah surahs */}
-              {selectedSurah.number !== 9 && selectedSurah.number !== 1 && (
-                <Card>
-                  <CardContent className="p-6 text-center">
-                    <p className="text-2xl font-arabic mb-2">
-                      بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      In the name of Allah, the Entirely Merciful, the
-                      Especially Merciful.
-                    </p>
-                  </CardContent>
-                </Card>
-              )}
-
               {/* Content based on view mode */}
-              {viewMode === "cards" ? <CardView /> : <ContinuousView />}
+              {loadingAyahs ? (
+                <NiceLoading message="Loading Surah..." />
+              ) : viewMode === "cards" ? (
+                <CardView />
+              ) : (
+                <ContinuousView />
+              )}
 
               {/* Navigation */}
               <div className="flex justify-between items-center py-8">
