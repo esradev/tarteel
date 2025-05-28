@@ -26,6 +26,8 @@ import {
   Sun,
   LayoutGrid,
   AlignLeft,
+  Minus,
+  Plus,
 } from "lucide-react";
 import { AppSidebar } from "./components/app-sidebar";
 
@@ -176,70 +178,6 @@ export default function App() {
   const isBookmarked = (surahId: number, ayahId: number) => {
     return bookmarks.includes(`${surahId}-${ayahId}`);
   };
-
-  const SettingsDialog = () => (
-    <Dialog>
-      <DialogTrigger asChild>
-        <Button variant="ghost" size="icon">
-          <Settings className="h-4 w-4" />
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="bg-background border">
-        <DialogHeader>
-          <DialogTitle>Reading Settings</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-6">
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Font Size</label>
-            <Slider
-              value={fontSize}
-              onValueChange={setFontSize}
-              max={32}
-              min={12}
-              step={2}
-              className="w-full"
-            />
-            <p className="text-sm text-muted-foreground">
-              Current: {fontSize[0]}px
-            </p>
-          </div>
-          <div className="flex items-center justify-between">
-            <label className="text-sm font-medium">Dark Mode</label>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setDarkMode(!darkMode)}
-            >
-              {darkMode ? (
-                <Sun className="h-4 w-4" />
-              ) : (
-                <Moon className="h-4 w-4" />
-              )}
-            </Button>
-          </div>
-          <div className="flex items-center justify-between">
-            <label className="text-sm font-medium">View Mode</label>
-            <div className="flex gap-1">
-              <Button
-                variant={viewMode === "cards" ? "default" : "ghost"}
-                size="icon"
-                onClick={() => setViewMode("cards")}
-              >
-                <LayoutGrid className="h-4 w-4" />
-              </Button>
-              <Button
-                variant={viewMode === "continuous" ? "default" : "ghost"}
-                size="icon"
-                onClick={() => setViewMode("continuous")}
-              >
-                <AlignLeft className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
 
   const CardView = () => (
     <div className="space-y-6">
@@ -442,7 +380,34 @@ export default function App() {
                 >
                   <AlignLeft className="h-4 w-4" />
                 </Button>
-                <SettingsDialog />
+                {/* Font size controls */}
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    aria-label="Decrease font size"
+                    onClick={() =>
+                      setFontSize((prev) => [Math.max(12, prev[0] - 2)])
+                    }
+                    disabled={fontSize[0] <= 12}
+                  >
+                    <Minus className="text-lg font-bold" />
+                  </Button>
+                  <span className="text-sm w-8 text-center select-none">
+                    {fontSize[0]}px
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    aria-label="Increase font size"
+                    onClick={() =>
+                      setFontSize((prev) => [Math.min(32, prev[0] + 2)])
+                    }
+                    disabled={fontSize[0] >= 32}
+                  >
+                    <Plus className="text-lg font-bold" />
+                  </Button>
+                </div>
                 <Button
                   variant="ghost"
                   size="icon"
