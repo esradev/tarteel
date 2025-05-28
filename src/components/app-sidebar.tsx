@@ -37,11 +37,26 @@ export function AppSidebar({
 }: AppSidebarProps) {
   const [searchQuery, setSearchQuery] = useState("");
 
+  // Utility to normalize Arabic text for search (remove diacritics, normalize alef, etc.)
+  function normalizeArabic(text: string) {
+    return text
+      .replace(/[\u064B-\u065F\u0670]/g, "") // Remove Arabic diacritics
+      .replace(/[إأآا]/g, "ا") // Normalize alef variants to bare alef
+      .replace(/ى/g, "ي") // Normalize alef maqsura to ya
+      .replace(/ة/g, "ه") // Normalize ta marbuta to ha
+      .replace(/ؤ/g, "و") // Normalize waw-hamza to waw
+      .replace(/ئ/g, "ي") // Normalize ya-hamza to ya
+      .replace(/-/g, "") // Remove dashes
+      .replace(/\s/g, "") // Remove spaces
+      .toLowerCase();
+  }
+
   // Filter surahs by search
+  const normalizedQuery = normalizeArabic(searchQuery);
   const filteredSurahs = surahs.filter(
     (surah) =>
       surah.englishName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      surah.name.includes(searchQuery) ||
+      normalizeArabic(surah.name).includes(normalizedQuery) ||
       surah.englishNameTranslation
         .toLowerCase()
         .includes(searchQuery.toLowerCase())
