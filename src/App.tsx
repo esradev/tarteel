@@ -16,9 +16,10 @@ import {
   Moon,
   Sun,
   LayoutGrid,
-  AlignLeft,
-  Minus,
-  Plus,
+  AlignJustify,
+  AlignRight,
+  AArrowDown,
+  AArrowUp,
 } from "lucide-react";
 import { AppSidebar } from "./components/app-sidebar";
 import { Input } from "@/components/ui/input";
@@ -30,7 +31,9 @@ export default function App() {
   const [bookmarks, setBookmarks] = useState<string[]>([]);
   const [fontSize, setFontSize] = useState([18]);
   const [darkMode, setDarkMode] = useState(false);
-  const [viewMode, setViewMode] = useState<"cards" | "continuous">("cards");
+  const [viewMode, setViewMode] = useState<"cards" | "continuous" | "lines">(
+    "lines"
+  );
   const [loadingSurahs, setLoadingSurahs] = useState(false);
   const [loadingAyahs, setLoadingAyahs] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -317,6 +320,74 @@ export default function App() {
     </div>
   );
 
+  const LinesView = () => (
+    <div className="space-y-8">
+      {/* Arabic Text Section */}
+      <Card>
+        <CardContent className="p-8">
+          <div className="text-right space-y-1">
+            <div
+              className="font-arabic leading-loose"
+              style={{ fontSize: `${fontSize[0]}px` }}
+            >
+              {/* Each ayah on its own line */}
+              <div className="flex flex-col gap-4">
+                {filteredAyahs.map((ayah) => (
+                  <div
+                    key={ayah.id}
+                    className="group relative flex items-end justify-end"
+                  >
+                    <span className="hover:bg-accent/20 transition-colors cursor-pointer">
+                      {highlightMatch(ayah.text, ayahSearch, true)}
+                    </span>
+                    <span className="inline-flex items-center justify-center w-6 h-6 text-xs bg-primary text-primary-foreground rounded-full mx-2 font-sans">
+                      {ayah.id}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute -top-1 -right-1 w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() =>
+                        toggleBookmark(selectedSurah.number, ayah.id)
+                      }
+                    >
+                      <Bookmark
+                        className={`h-3 w-3 ${
+                          isBookmarked(selectedSurah.number, ayah.id)
+                            ? "fill-current text-yellow-500"
+                            : ""
+                        }`}
+                      />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Translation Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Translation</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {filteredAyahs.map((ayah) => (
+            <div key={ayah.id} className="flex gap-3">
+              <Badge variant="outline" className="text-xs mt-1 flex-shrink-0">
+                {ayah.id}
+              </Badge>
+              <p className="text-muted-foreground leading-relaxed">
+                {highlightMatch(ayah.translation, ayahSearch)}
+              </p>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+    </div>
+  );
+
   const ContinuousView = () => (
     <div className="space-y-8">
       {/* Arabic Text Section */}
@@ -468,18 +539,25 @@ export default function App() {
                   className="w-40 md:w-56"
                 />
                 <Button
-                  variant={viewMode === "cards" ? "default" : "ghost"}
+                  variant={viewMode === "cards" ? "default" : "outline"}
                   size="icon"
                   onClick={() => setViewMode("cards")}
                 >
                   <LayoutGrid className="h-4 w-4" />
                 </Button>
                 <Button
-                  variant={viewMode === "continuous" ? "default" : "ghost"}
+                  variant={viewMode === "continuous" ? "default" : "outline"}
                   size="icon"
                   onClick={() => setViewMode("continuous")}
                 >
-                  <AlignLeft className="h-4 w-4" />
+                  <AlignRight className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={viewMode === "lines" ? "default" : "outline"}
+                  size="icon"
+                  onClick={() => setViewMode("lines")}
+                >
+                  <AlignJustify className="h-4 w-4" />
                 </Button>
                 {/* Font size controls */}
                 <div className="flex items-center gap-1">
@@ -492,11 +570,8 @@ export default function App() {
                     }
                     disabled={fontSize[0] <= 12}
                   >
-                    <Minus className="text-lg font-bold" />
+                    <AArrowDown className="text-lg font-bold" />
                   </Button>
-                  <span className="text-sm w-8 text-center select-none">
-                    {fontSize[0]}px
-                  </span>
                   <Button
                     variant="outline"
                     size="icon"
@@ -506,11 +581,11 @@ export default function App() {
                     }
                     disabled={fontSize[0] >= 32}
                   >
-                    <Plus className="text-lg font-bold" />
+                    <AArrowUp className="text-lg font-bold" />
                   </Button>
                 </div>
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   size="icon"
                   onClick={() => setDarkMode(!darkMode)}
                 >
@@ -559,8 +634,10 @@ export default function App() {
                 <NiceLoading message="Loading Surah..." />
               ) : viewMode === "cards" ? (
                 <CardView />
-              ) : (
+              ) : viewMode === "continuous" ? (
                 <ContinuousView />
+              ) : (
+                <LinesView />
               )}
 
               {/* Navigation */}
