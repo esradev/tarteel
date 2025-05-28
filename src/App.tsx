@@ -1,0 +1,555 @@
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Slider } from "@/components/ui/slider";
+import {
+  Menu,
+  Search,
+  Bookmark,
+  Settings,
+  ChevronLeft,
+  ChevronRight,
+  Moon,
+  Sun,
+  LayoutGrid,
+  AlignLeft,
+} from "lucide-react";
+
+export default function QuranApp() {
+  const [surahs, setSurahs] = useState<any[]>([]);
+  const [selectedSurah, setSelectedSurah] = useState<any | null>(null);
+  const [ayahs, setAyahs] = useState<any[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [bookmarks, setBookmarks] = useState<string[]>([]);
+  const [fontSize, setFontSize] = useState([18]);
+  const [darkMode, setDarkMode] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<"cards" | "continuous">("cards");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch surah list on mount
+  useEffect(() => {
+    setLoading(true);
+    fetch("https://api.alquran.cloud/v1/surah")
+      .then((res) => res.json())
+      .then((data) => {
+        setSurahs(data.data);
+        // Select Al-Fatihah by default
+        setSelectedSurah(data.data[0]);
+      })
+      .catch(() => setError("Failed to load surah list"))
+      .finally(() => setLoading(false));
+  }, []);
+
+  // Fetch ayahs when selectedSurah changes
+  useEffect(() => {
+    if (!selectedSurah) return;
+    setLoading(true);
+    fetch(
+      `https://api.alquran.cloud/v1/surah/${selectedSurah.number}/ar.alafasy`
+    )
+      .then((res) => res.json())
+      .then((data) => {
+        // Fetch translation as well
+        fetch(
+          `https://api.alquran.cloud/v1/surah/${selectedSurah.number}/en.asad`
+        )
+          .then((res2) => res2.json())
+          .then((tr) => {
+            // Merge Arabic and translation
+            const ayahsWithTranslation = data.data.ayahs.map(
+              (a: any, i: number) => ({
+                id: a.numberInSurah,
+                text: a.text,
+                translation: tr.data.ayahs[i]?.text || "",
+              })
+            );
+            setAyahs(ayahsWithTranslation);
+          });
+      })
+      .catch(() => setError("Failed to load surah"))
+      .finally(() => setLoading(false));
+  }, [selectedSurah]);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, [darkMode]);
+
+  const toggleBookmark = (surahId: number, ayahId: number) => {
+    const bookmarkKey = `${surahId}-${ayahId}`;
+    setBookmarks((prev) =>
+      prev.includes(bookmarkKey)
+        ? prev.filter((b) => b !== bookmarkKey)
+        : [...prev, bookmarkKey]
+    );
+  };
+
+  const isBookmarked = (surahId: number, ayahId: number) => {
+    return bookmarks.includes(`${surahId}-${ayahId}`);
+  };
+
+  // Filter surahs by search
+  const filteredSurahs = surahs.filter(
+    (surah) =>
+      surah.englishName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      surah.name.includes(searchQuery) ||
+      surah.englishNameTranslation
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase())
+  );
+
+  const SurahList = () => (
+    <div className="space-y-2">
+      <div className="p-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+          <Input
+            placeholder="Search surahs..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+      </div>
+      <ScrollArea className="h-[calc(100vh-200px)]">
+        <div className="space-y-1 p-4 pt-0">
+          {filteredSurahs.map((surah) => (
+            <Card
+              key={surah.number}
+              className={`cursor-pointer transition-colors hover:bg-accent ${
+                selectedSurah?.number === surah.number
+                  ? "bg-accent border-primary"
+                  : ""
+              }`}
+              onClick={() => {
+                setSelectedSurah(surah);
+                if (isMobile) setSidebarOpen(false);
+              }}
+            >
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="text-xs">
+                        {surah.number}
+                      </Badge>
+                      <h3 className="font-semibold text-sm">
+                        {surah.englishName}
+                      </h3>
+                    </div>
+                    <p className="text-lg font-arabic text-right">
+                      {surah.name}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {surah.englishNameTranslation}
+                    </p>
+                  </div>
+                  <div className="text-right space-y-1">
+                    <p className="text-xs text-muted-foreground">
+                      {surah.numberOfAyahs} ayahs
+                    </p>
+                    <Badge
+                      variant={
+                        surah.revelationType === "Meccan"
+                          ? "default"
+                          : "secondary"
+                      }
+                      className="text-xs"
+                    >
+                      {surah.revelationType}
+                    </Badge>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </ScrollArea>
+    </div>
+  );
+
+  const SettingsDialog = () => (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button variant="ghost" size="icon">
+          <Settings className="h-4 w-4" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="bg-background border">
+        <DialogHeader>
+          <DialogTitle>Reading Settings</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-6">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Font Size</label>
+            <Slider
+              value={fontSize}
+              onValueChange={setFontSize}
+              max={32}
+              min={12}
+              step={2}
+              className="w-full"
+            />
+            <p className="text-sm text-muted-foreground">
+              Current: {fontSize[0]}px
+            </p>
+          </div>
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-medium">Dark Mode</label>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setDarkMode(!darkMode)}
+            >
+              {darkMode ? (
+                <Sun className="h-4 w-4" />
+              ) : (
+                <Moon className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-medium">View Mode</label>
+            <div className="flex gap-1">
+              <Button
+                variant={viewMode === "cards" ? "default" : "ghost"}
+                size="icon"
+                onClick={() => setViewMode("cards")}
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={viewMode === "continuous" ? "default" : "ghost"}
+                size="icon"
+                onClick={() => setViewMode("continuous")}
+              >
+                <AlignLeft className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+
+  const CardView = () => (
+    <div className="space-y-6">
+      {ayahs.map((ayah) => (
+        <Card key={ayah.id} className="group">
+          <CardContent className="p-6">
+            <div className="space-y-4">
+              <div className="flex items-start justify-between">
+                <Badge variant="outline" className="text-xs">
+                  {ayah.id}
+                </Badge>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={() => toggleBookmark(selectedSurah.number, ayah.id)}
+                >
+                  <Bookmark
+                    className={`h-4 w-4 ${
+                      isBookmarked(selectedSurah.number, ayah.id)
+                        ? "fill-current text-yellow-500"
+                        : ""
+                    }`}
+                  />
+                </Button>
+              </div>
+              <div className="text-right">
+                <p
+                  className="font-arabic leading-loose mb-4"
+                  style={{ fontSize: `${fontSize[0]}px` }}
+                >
+                  {ayah.text}
+                </p>
+              </div>
+              <Separator />
+              <p className="text-muted-foreground leading-relaxed">
+                {ayah.translation}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+
+  const ContinuousView = () => (
+    <div className="space-y-8">
+      {/* Arabic Text Section */}
+      <Card>
+        <CardContent className="p-8">
+          <div className="text-right space-y-1">
+            <div
+              className="font-arabic leading-loose"
+              style={{ fontSize: `${fontSize[0]}px` }}
+            >
+              {ayahs.map((ayah, index) => (
+                <span key={ayah.id} className="group relative">
+                  <span className="hover:bg-accent/20 transition-colors cursor-pointer">
+                    {ayah.text}
+                  </span>
+                  <span className="inline-flex items-center justify-center w-6 h-6 text-xs bg-primary text-primary-foreground rounded-full mx-2 font-sans">
+                    {ayah.id}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute -top-1 -right-1 w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={() =>
+                      toggleBookmark(selectedSurah.number, ayah.id)
+                    }
+                  >
+                    <Bookmark
+                      className={`h-3 w-3 ${
+                        isBookmarked(selectedSurah.number, ayah.id)
+                          ? "fill-current text-yellow-500"
+                          : ""
+                      }`}
+                    />
+                  </Button>
+                  {index < ayahs.length - 1 && " "}
+                </span>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Translation Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Translation</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {ayahs.map((ayah) => (
+            <div key={ayah.id} className="flex gap-3">
+              <Badge variant="outline" className="text-xs mt-1 flex-shrink-0">
+                {ayah.id}
+              </Badge>
+              <p className="text-muted-foreground leading-relaxed">
+                {ayah.translation}
+              </p>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        Loading...
+      </div>
+    );
+  }
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-screen text-red-500">
+        {error}
+      </div>
+    );
+  }
+  if (!selectedSurah) {
+    return null;
+  }
+
+  return (
+    <div className="min-h-screen bg-background text-foreground">
+      <div className="flex h-screen">
+        {/* Desktop Sidebar */}
+        {!isMobile && (
+          <div className="w-80 border-r bg-card">
+            <div className="p-4 border-b">
+              <h1 className="text-xl font-bold">Quran Reader</h1>
+            </div>
+            <SurahList />
+          </div>
+        )}
+
+        {/* Mobile Sidebar */}
+        {isMobile && (
+          <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+            <SheetContent side="left" className="w-80 p-0 bg-card">
+              <div className="p-4 border-b">
+                <h1 className="text-xl font-bold">Quran Reader</h1>
+              </div>
+              <SurahList />
+            </SheetContent>
+          </Sheet>
+        )}
+
+        {/* Main Content */}
+        <div className="flex-1 flex flex-col">
+          {/* Header */}
+          <div className="border-b bg-card p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                {isMobile && (
+                  <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+                    <SheetTrigger asChild>
+                      <Button variant="ghost" size="icon">
+                        <Menu className="h-4 w-4" />
+                      </Button>
+                    </SheetTrigger>
+                  </Sheet>
+                )}
+                <div>
+                  <h2 className="text-xl font-bold">
+                    {selectedSurah.englishName}
+                  </h2>
+                  <p className="text-2xl font-arabic text-right">
+                    {selectedSurah.name}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {selectedSurah.englishNameTranslation}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant={viewMode === "cards" ? "default" : "ghost"}
+                  size="icon"
+                  onClick={() => setViewMode("cards")}
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={viewMode === "continuous" ? "default" : "ghost"}
+                  size="icon"
+                  onClick={() => setViewMode("continuous")}
+                >
+                  <AlignLeft className="h-4 w-4" />
+                </Button>
+                <SettingsDialog />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setDarkMode(!darkMode)}
+                >
+                  {darkMode ? (
+                    <Sun className="h-4 w-4" />
+                  ) : (
+                    <Moon className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Reading Area */}
+          <ScrollArea className="flex-1">
+            <div className="max-w-4xl mx-auto p-6 space-y-8">
+              {/* Surah Header */}
+              <Card>
+                <CardHeader className="text-center">
+                  <CardTitle className="text-2xl">
+                    {selectedSurah.englishName}
+                  </CardTitle>
+                  <p className="text-3xl font-arabic">{selectedSurah.name}</p>
+                  <p className="text-muted-foreground">
+                    {selectedSurah.englishNameTranslation}
+                  </p>
+                  <div className="flex justify-center gap-4 text-sm">
+                    <Badge variant="outline">
+                      {selectedSurah.numberOfAyahs} Ayahs
+                    </Badge>
+                    <Badge
+                      variant={
+                        selectedSurah.revelationType === "Meccan"
+                          ? "default"
+                          : "secondary"
+                      }
+                    >
+                      {selectedSurah.revelationType}
+                    </Badge>
+                  </div>
+                </CardHeader>
+              </Card>
+
+              {/* Bismillah for non-Tawbah surahs */}
+              {selectedSurah.number !== 9 && selectedSurah.number !== 1 && (
+                <Card>
+                  <CardContent className="p-6 text-center">
+                    <p className="text-2xl font-arabic mb-2">
+                      بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      In the name of Allah, the Entirely Merciful, the
+                      Especially Merciful.
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Content based on view mode */}
+              {viewMode === "cards" ? <CardView /> : <ContinuousView />}
+
+              {/* Navigation */}
+              <div className="flex justify-between items-center py-8">
+                <Button
+                  variant="outline"
+                  className="flex items-center gap-2"
+                  disabled={selectedSurah.number === 1}
+                  onClick={() => {
+                    const prevSurah = surahs.find(
+                      (s) => s.number === selectedSurah.number - 1
+                    );
+                    if (prevSurah) setSelectedSurah(prevSurah);
+                  }}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Previous Surah
+                </Button>
+                <Button
+                  variant="outline"
+                  className="flex items-center gap-2"
+                  disabled={selectedSurah.number === surahs.length}
+                  onClick={() => {
+                    const nextSurah = surahs.find(
+                      (s) => s.number === selectedSurah.number + 1
+                    );
+                    if (nextSurah) setSelectedSurah(nextSurah);
+                  }}
+                >
+                  Next Surah
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </ScrollArea>
+        </div>
+      </div>
+    </div>
+  );
+}
