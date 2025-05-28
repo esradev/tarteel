@@ -11,7 +11,7 @@ import {
   AArrowUp,
 } from "lucide-react";
 
-interface AppHeaderProps {
+interface HeaderProps {
   selectedSurah: any;
   ayahSearch: string;
   setAyahSearch: (v: string) => void;
@@ -23,7 +23,7 @@ interface AppHeaderProps {
   setDarkMode: (v: boolean) => void;
 }
 
-export function AppHeader({
+export function Header({
   selectedSurah,
   ayahSearch,
   setAyahSearch,
@@ -33,7 +33,7 @@ export function AppHeader({
   setFontSize,
   darkMode,
   setDarkMode,
-}: AppHeaderProps) {
+}: HeaderProps) {
   if (!selectedSurah) return null;
   return (
     <div className="border-b bg-gradient-to-r from-[#e0e7ef] to-[#f5f7fa] dark:from-blue-900 dark:to-[#1e293b] p-4 shadow-md relative z-10">
